@@ -1,0 +1,8 @@
+# Never commit the binary or its backup
+*.exe
+*.exe.bak
+*.dll
+
+# Python
+__pycache__/
+*.pyc
