@@ -9,7 +9,7 @@ If you use FSRealistic with MSFS, pressing F snaps/re-zooms the camera. It does 
 - you've deleted the "Reset camera" bind from every controller in FSRealistic's settings, and
 - the sim window isn't even focused (typing F in the EFB, alt-tabbed, whatever).
 
-There's no way to turn it off. `config.json` has a `reset_camera_button_id`, but that only lets you add a *second* key — the F key is baked into the exe. People have been complaining about this on the MSFS forums since 2022 and it's never been fixed.
+There's no way to turn it off. `config.json` has a `reset_camera_button_id`, but that only lets you add a *second* key — the F key is baked into the exe.
 
 ## What's actually going on
 
@@ -25,7 +25,7 @@ JNS  skip                 ; if F isn't down, skip
 
 So any time F is held down it resets the zoom, no matter what your binds say. `GetKeyState` reads the global keyboard, which is why focus doesn't matter.
 
-The normal, configurable reset-camera bind is handled by different code and this doesn't touch it — it keeps working like before.
+The normal, configurable reset-camera bind is handled by different code and this doesn't touch it; it keeps working like before.
 
 ## The fix
 
@@ -51,4 +51,4 @@ It checks the original bytes before writing, so it won't touch a different versi
 
 ## Notes
 
-The patcher and this README are all that's here — you point it at your own installed copy. Nothing from FSRealistic is redistributed.
+This repository contains only the patcher and README. No FSRealistic files are included or redistributed.
