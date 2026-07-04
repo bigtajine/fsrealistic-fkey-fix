@@ -29,15 +29,17 @@ The normal, configurable reset-camera bind is handled by different code and this
 
 ## The fix
 
-One instruction. Change that conditional `JNS` (skip only when F is up) into an unconditional jump so the reset block never runs.
-
-At file offset `0xA59BD`:
+One instruction. Change that conditional `JNS` (skip only when F is up) into an unconditional jump so the reset block never runs. On the build I looked at that's file offset `0xA59BD`:
 
 ```
 0F 89 E4 00 00 00   ->   E9 E5 00 00 00 90
 ```
 
-That's it. The `GetKeyState` call is left alone since it's harmless; only the branch changes.
+The `GetKeyState` call is left alone since it's harmless; only the branch changes.
+
+Rather than hardcode that offset (which would break on the next update), the script **scans for the instruction pattern** — the `MOV ECX,0x46` (VK_F), the `CALL [GetKeyState]`, the `TEST AX,AX`, and the `JNS` guard — and works out the replacement jump distance itself. So it has a fair shot at still working after a minor FSRealistic update.
+
+It's not magic, though: if Sim Innovations ever changes *how* the key is read (a different API, inlined differently, moved elsewhere), the pattern won't match. In that case the script finds nothing and refuses to touch anything, and the exe needs another look in a disassembler. There's no way around that for a closed-source binary.
 
 ## Usage
 
@@ -47,7 +49,7 @@ Close FSRealistic first (the exe is locked while it's running), then:
 python patch_fsrealistic.py "C:\path\to\FSRealistic\FSRealistic.exe"
 ```
 
-It checks the original bytes before writing, so it won't touch a different version by mistake, and it saves a `FSRealistic.exe.bak` the first time. To undo, just copy the `.bak` back over the exe.
+It only patches when it finds exactly one match, so it won't touch something it isn't sure about, and it saves a `FSRealistic.exe.bak` the first time. To undo, just copy the `.bak` back over the exe. Run it again after a FSRealistic update and it'll either re-apply or tell you the pattern changed.
 
 ## Notes
 
