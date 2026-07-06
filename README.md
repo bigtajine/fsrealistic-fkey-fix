@@ -1,56 +1,28 @@
-# FSRealistic F-key fix
+# FSRealistic F‑Key Fix
 
-Small binary patch that stops FSRealistic from resetting the camera every time you press **F**.
+A small patch that disables FSRealistic’s hardcoded camera reset when the **F** key is pressed.
 
-## The problem
+## Overview
+FSRealistic directly checks `VK_F` via `GetKeyState` and triggers a camera reset whenever the key is down. This happens regardless of user‑configured binds or application focus.
 
-If you use FSRealistic with MSFS, pressing F snaps/re-zooms the camera. It does this even if:
-
-- you've deleted the "Reset camera" bind from every controller in FSRealistic's settings, and
-- the sim window isn't even focused (typing F in the EFB, alt-tabbed, whatever).
-
-There's no way to turn it off. `config.json` has a `reset_camera_button_id`, but that only lets you add a *second* key — the F key is baked into the exe.
-
-## What's actually going on
-
-FSRealistic's per-frame camera code checks the F key directly:
+## Patch Details
+The fix replaces the conditional jump that guards the F‑key reset block:
 
 ```
-MOV  ECX, 0x46            ; 0x46 = VK_F
-CALL [GetKeyState]
-TEST AX, AX
-JNS  skip                 ; if F isn't down, skip
-...                       ; otherwise: force reset-zoom flag + default zoom
+0F 89 E4 00 00 00   →   E9 E5 00 00 00 90
 ```
 
-So any time F is held down it resets the zoom, no matter what your binds say. `GetKeyState` reads the global keyboard, which is why focus doesn't matter.
-
-The normal, configurable reset-camera bind is handled by different code and this doesn't touch it; it keeps working like before.
-
-## The fix
-
-One instruction. Change that conditional `JNS` (skip only when F is up) into an unconditional jump so the reset block never runs. On the build I looked at that's file offset `0xA59BD`:
-
-```
-0F 89 E4 00 00 00   ->   E9 E5 00 00 00 90
-```
-
-The `GetKeyState` call is left alone since it's harmless; only the branch changes.
-
-Rather than hardcode that offset (which would break on the next update), the script **scans for the instruction pattern** — the `MOV ECX,0x46` (VK_F), the `CALL [GetKeyState]`, the `TEST AX,AX`, and the `JNS` guard — and works out the replacement jump distance itself. So it has a fair shot at still working after a minor FSRealistic update.
-
-It's not magic, though: if Sim Innovations ever changes *how* the key is read (a different API, inlined differently, moved elsewhere), the pattern won't match. In that case the script finds nothing and refuses to touch anything, and the exe needs another look in a disassembler. There's no way around that for a closed-source binary.
+The script locates this block by scanning for the instruction pattern (MOV → CALL GetKeyState → TEST → JNS). It patches only when exactly one match is found.
 
 ## Usage
-
-Close FSRealistic first (the exe is locked while it's running), then:
+Close FSRealistic, then run:
 
 ```
 python patch_fsrealistic.py "C:\path\to\FSRealistic\FSRealistic.exe"
 ```
 
-It only patches when it finds exactly one match, so it won't touch something it isn't sure about, and it saves a `FSRealistic.exe.bak` the first time. To undo, just copy the `.bak` back over the exe. Run it again after a FSRealistic update and it'll either re-apply or tell you the pattern changed.
+A `.bak` file is created on first run. Restoring it reverts the change.  
+After FSRealistic updates, rerun the script; it will either apply the patch again or report that the pattern no longer matches.
 
 ## Notes
-
-This repository contains only the patcher and README. No FSRealistic files are included or redistributed.
+This repository contains only the patcher and documentation. No FSRealistic files are included.
